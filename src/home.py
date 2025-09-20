@@ -13,10 +13,22 @@ from urllib.parse import quote
 import hmac
 
 
+# --- Secrets helper (safe on Azure when no secrets.toml) ---
+def _safe_secret(key: str):
+    """Safely read a key from st.secrets without requiring secrets.toml.
+    Returns None if secrets are unavailable or the key is missing.
+    """
+    try:
+        return st.secrets[key]
+    except Exception:
+        return None
+
+
 # --- Password gate helpers ---
 def _get_app_password() -> str | None:
-    # Prefer Streamlit secrets, fallback to env var; return None if unset
-    return st.secrets.get("app_password") or os.getenv("APP_PASSWORD")
+    # Prefer Streamlit secret; fall back to env var; return None if unset
+    secret_pw = _safe_secret("app_password")
+    return secret_pw or os.getenv("APP_PASSWORD")
 
 
 def check_password() -> bool:
@@ -110,11 +122,7 @@ def main():
 
 
     # Configure OpenAI key (prefer Streamlit secret, fallback to env var)
-    try:
-        openai_key = st.secrets.get("openai_key")
-    except Exception:
-        openai_key = None
-    openai_key = openai_key or os.getenv("OPENAI_API_KEY")
+    openai_key = _safe_secret("openai_key") or os.getenv("OPENAI_API_KEY")
     if openai_key:
         os.environ["OPENAI_API_KEY"] = openai_key
     else:
@@ -191,7 +199,7 @@ def main():
                     """Return a text URL for later enabling as a real hyperlink.
                     Prefers a configured `docs_base_url`; otherwise shows a local file:// URI.
                     """
-                    base = st.secrets.get("docs_base_url")
+                    base = _safe_secret("docs_base_url")
                     page_str = str(page) if page is not None else None
 
                     # Prefer a public base if provided (works in prod later)
