@@ -33,21 +33,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
-      # Build the app with Oryx in CI and produce a deployable artefact
-      - name: Azure App Service Build (Oryx)
-        id: azure_appservice_build
-        uses: azure/appservice-build@v3
-        with:
-          platform: python
-          platform-version: 3.11
 
-      # Deploy the artefact produced by the Oryx build step
-      - name: Deploy to Azure Web App (with Oryx artefact)
+      # Deploy repo and let Azure (Oryx) build on the App Service side
+      - name: Deploy to Azure Web App (server-side Oryx)
         uses: azure/webapps-deploy@v3
         with:
           app-name: agp-dhu-bcp
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_XXXXX }}
-          package: ${{ steps.azure_appservice_build.outputs.package-path }}
+          package: .
+          enable-oryx-build: true
           runtime-stack: 'python|3.11'
           startup-command: "python -m streamlit run ./src/home.py --server.port $PORT --server.address 0.0.0.0"
