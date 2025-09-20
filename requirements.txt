@@ -1,5 +1,7 @@
-streamlit
-openai
-llama-index
-nltk
-PyMuPDF
+streamlit>=1.29.0
+openai>=1.30.0
+llama-index-core>=0.10.0
+llama-index-readers-file>=0.1.0
+llama-index-llms-openai>=0.1.0
+nltk>=3.8.1
+PyMuPDF>=1.23.0

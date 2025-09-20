@@ -7,45 +7,7 @@ from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core import SimpleDirectoryReader
 from llama_index.llms.openai import OpenAI
 from llama_index.core.memory import ChatMemoryBuffer
-
 from urllib.parse import quote
-import hmac
-
-
-# --- Password gate helpers ---
-def _get_app_password() -> str | None:
-    # Prefer Streamlit secrets, fallback to env var; return None if unset
-    return st.secrets.get("app_password") or os.getenv("APP_PASSWORD")
-
-
-def check_password() -> bool:
-    """Simple password gate. Returns True if authenticated for this session."""
-    # Already authed?
-    if st.session_state.get("auth_ok"):
-        # Offer a sign-out in the sidebar
-        with st.sidebar:
-            if st.button("Sign out"):
-                st.session_state.clear()
-                st.rerun()
-        return True
-
-    pw = _get_app_password()
-    if not pw:
-        st.warning("No password configured. Set 'app_password' in Streamlit Secrets or APP_PASSWORD env var.")
-        return True  # allow through in dev if not configured
-
-    st.title("🔒 DHU BCP Support Assistant – Sign in")
-    with st.form("login_form", clear_on_submit=True):
-        entered = st.text_input("Password", type="password")
-        submit = st.form_submit_button("Sign in")
-    if submit:
-        if hmac.compare_digest(entered or "", pw):
-            st.session_state.auth_ok = True
-            st.success("Signed in. Loading app…")
-            st.rerun()
-        else:
-            st.error("Incorrect password.")
-    return False
 
 
 
@@ -54,18 +16,10 @@ def main():
     # V2 instance
     st.set_page_config(page_title="DHU BCP Support Assistant", page_icon=":books:")
 
-    # Password gate (Streamlit Cloud safe). Configure via secrets: app_password = "<your password>"
-    if not check_password():
-        return
 
 
-
-    # Derive a per-user/session key (robust to Streamlit version)
-    try:
-        headers = st.context.headers  # Streamlit >= 1.29
-    except Exception:
-        headers = {}
-
+    # Derive a per-user/session key (pick whatever makes sense for you)
+    headers = st.context.headers
     session_id = headers.get("X-Forwarded-For") or st.session_state.get("session_id")
 
     if not session_id:
@@ -98,7 +52,7 @@ def main():
             ⚠️ Please note:<br><br> 
             This is a non-production demonstration environment using a limited, anonymised data set from the provided manual.
             <br><br>
-            Do not rely on it for decision making.
+            No not rely on it for decision making.
             <br><br>
             The links to the source document and page are disabled due to limitations of the prototyping environment.
         </div>
@@ -108,19 +62,10 @@ def main():
 
 
 
-    # Configure OpenAI key (prefer Streamlit secret, fallback to env var)
-    try:
-        openai_key = st.secrets.get("openai_key")
-    except Exception:
-        openai_key = None
-    openai_key = openai_key or os.getenv("OPENAI_API_KEY")
-    if openai_key:
-        os.environ["OPENAI_API_KEY"] = openai_key
-    else:
-        st.warning("No OpenAI API key found. Set 'openai_key' in Streamlit Secrets or OPENAI_API_KEY env var.")
+    os.environ["OPENAI_API_KEY"] = st.secrets["openai_key"]
 
     Settings.llm = OpenAI(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        model="gpt-4.1-mini-2025-04-14",
         temperature=0.5,
         system_prompt=(
             "You are an expert on advising staff on Business Continuity Plan (BCP) queries. "
@@ -130,29 +75,22 @@ def main():
         )
     )
 
-    # Render logo if available (non-fatal if missing)
-    try:
-        logo_path = Path(__file__).resolve().parents[1] / "img" / "logo.jpg"
-        data = base64.b64encode(logo_path.read_bytes()).decode()
-        st.markdown(
-            f"""
-            <div style="text-align:center;">
-                <img src="data:image/jpeg;base64,{data}" width="100">
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    except Exception:
-        pass  # logo is optional
+    logo_path = Path(__file__).resolve().parents[1] / "img" / "logo.jpg"
+    data = base64.b64encode(logo_path.read_bytes()).decode()
+    st.markdown(
+        f"""
+        <div style="text-align:center;">
+            <img src="data:image/jpeg;base64,{data}" width="100">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     st.write("""
             # DHU BCP Support Assistant
             """)
 
-    try:
-        headers = st.context.headers
-    except Exception:
-        headers = {}
+    headers = st.context.headers
     ip = headers.get("X-Forwarded-For") or headers.get("Host")
     st.write("**User IP:**", ip)
 
