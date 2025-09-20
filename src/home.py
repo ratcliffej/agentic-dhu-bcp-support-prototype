@@ -5,6 +5,7 @@ from llama_index.core import Settings, VectorStoreIndex
 from llama_index.readers.file import PyMuPDFReader
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core import SimpleDirectoryReader
+from llama_index.core import Document
 from llama_index.llms.openai import OpenAI
 from llama_index.core.memory import ChatMemoryBuffer
 
@@ -329,6 +330,11 @@ def get_index(input_dir: str, signature: tuple):
                 d.metadata["file_path"] = str(p)
                 d.metadata["file_name"] = p.name
         docs.extend(other_docs)
+
+    # If no documents were found, create a tiny placeholder so the app still boots
+    if not docs:
+        docs = [Document(text="No source documents were found in the 'docs' folder. This is a placeholder so the app can start.")]
+        relative_files = []
 
     # Consistent chunking; metadata from Documents is carried onto Nodes
     parser = SentenceSplitter(chunk_size=900, chunk_overlap=120)
